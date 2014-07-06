@@ -2,8 +2,10 @@ package main
 
 import (
 	"flag"
+	"github.com/blang/pushr"
 	"github.com/blang/semver"
 	"io/ioutil"
+	"log"
 	"mime"
 	"net/http"
 	"os"
@@ -12,39 +14,16 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-
-	"log"
-	// "net/http"
 )
 
 type DataStore struct {
 	sync.RWMutex
 	dataDir  string
-	releases map[string]*Release
+	releases map[string]*pushr.Release
 }
 
-func (d *DataStore) Filepath(version *Version) string {
+func (d *DataStore) Filepath(version *pushr.Version) string {
 	return filepath.Join(d.dataDir, version.Filename)
-}
-
-type Release struct {
-	Versions map[string]*Version `json:"versions"`
-}
-
-func NewRelease() *Release {
-	return &Release{
-		Versions: make(map[string]*Version),
-	}
-}
-
-type Version struct {
-	ContentType string `json:"contenttype"`
-	Size        int64  `json:"size"`
-	Filename    string `json:"filename"`
-}
-
-func NewVersion() *Version {
-	return &Version{}
 }
 
 func main() {
@@ -84,7 +63,7 @@ func buildDataStore(dataDir string) (*DataStore, error) {
 	}
 	ds := &DataStore{
 		dataDir:  dataDir,
-		releases: make(map[string]*Release),
+		releases: make(map[string]*pushr.Release),
 	}
 	for _, f := range files {
 		parts := strings.SplitN(f.Name(), "-", 2)
@@ -105,11 +84,11 @@ func buildDataStore(dataDir string) (*DataStore, error) {
 		}
 		//TODO: Check filename for invalid chars
 
-		var r *Release
+		var r *pushr.Release
 		r, found := ds.releases[parts[0]]
 		if !found {
-			r = &Release{
-				Versions: make(map[string]*Version),
+			r = &pushr.Release{
+				Versions: make(map[string]*pushr.Version),
 			}
 			ds.releases[parts[0]] = r
 		}
@@ -119,7 +98,7 @@ func buildDataStore(dataDir string) (*DataStore, error) {
 			log.Printf("Duplicate version of file %s: %s\n", f.Name(), versionStr)
 			continue
 		}
-		v := &Version{}
+		v := &pushr.Version{}
 		v.Size = f.Size()
 		v.ContentType = mime.TypeByExtension(ext)
 		v.Filename = f.Name()

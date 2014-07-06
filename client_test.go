@@ -8,18 +8,17 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 )
 
 func TestLatestRelease(t *testing.T) {
-	exampleRelease := Release{
-		Name:    "Release1",
-		Version: "1.0.0",
-		Assets: []*Asset{
-			{
-				ID:          "1",
-				Name:        "asset.bin",
-				ContentType: "application/octet-stream",
+	testRelease := Release{
+		Versions: map[string]*Version{
+			"1.0.0": &Version{
+				ContentType: "application/zip",
+				Size:        10,
+				Filename:    "test-1.0.0.zip",
 			},
 		},
 	}
@@ -30,32 +29,53 @@ func TestLatestRelease(t *testing.T) {
 			t.Errorf("Request with wrong token: %q", token)
 			return
 		}
-		if requestedURL == "/repos/ns/repo/releases/stable/latest" {
+		t.Logf("URL: %s", requestedURL)
+		if requestedURL == "/releases/test" {
 			w.Header().Set("Content-Type", "application/json")
-			err := json.NewEncoder(w).Encode(&exampleRelease)
+			err := json.NewEncoder(w).Encode(&testRelease)
 			if err != nil {
 				panic("Could not encode example")
 			}
-		} else if requestedURL == "/repos/ns/repo/assets/1" {
-			w.Header().Set("Content-Type", "application/octet-stream")
-			fmt.Fprint(w, "TESTOUTPUT")
+		} else if requestedURL == "/releases/test/1.0.0" {
+			if strings.Contains(r.Header.Get("Accept"), "application/json") {
+				w.Header().Set("Content-Type", "application/json")
+				err := json.NewEncoder(w).Encode(testRelease.Versions["1.0.0"])
+				if err != nil {
+					panic("Could not encode example")
+				}
+			} else {
+				w.Header().Set("Content-Type", "application/octet-stream")
+				fmt.Fprint(w, "TESTOUTPUT")
+			}
 		} else {
 			t.Errorf("Wrong url requested: %q", requestedURL)
 		}
 	}))
 	defer ts.Close()
 
-	// Get Latest Release
-	c := NewClient(ts.URL, "ns/repo", "TOKEN123")
-	r, err := c.LatestRelease("stable")
+	// Get Release
+	c := NewClient(ts.URL, "TOKEN123", "")
+	r, err := c.Release("test")
 	if err != nil {
-		t.Fatalf("Error while getting latest release stable: %s", err)
+		t.Fatalf("Error while getting releases: %s", err)
 	}
 	if r == nil {
 		t.Fatal("No Release found")
 	}
-	if !reflect.DeepEqual(r, &exampleRelease) {
-		t.Fatalf("Release deep equal failed: expected %q, got %q", exampleRelease, r)
+	if !reflect.DeepEqual(r, &testRelease) {
+		t.Fatalf("Release deep equal failed: expected %q, got %q", testRelease, r)
+	}
+
+	// Get Version
+	v, err := c.Version("test", "1.0.0")
+	if err != nil {
+		t.Fatalf("Error while getting version: %s", err)
+	}
+	if v == nil {
+		t.Fatal("No version found")
+	}
+	if !reflect.DeepEqual(v, testRelease.Versions["1.0.0"]) {
+		t.Fatalf("Release deep equal failed: expected %q, got %q", testRelease.Versions["1.0.0"], v)
 	}
 
 	// Setup asset download
@@ -67,7 +87,7 @@ func TestLatestRelease(t *testing.T) {
 	tmpFile.Close() // Close, client will open it
 
 	// Download fake asset
-	err = c.Download(r.Assets[0], tmpFile.Name())
+	err = c.Download("test", "1.0.0", tmpFile.Name())
 	if err != nil {
 		t.Fatalf("Error while downloading asset: %s", err)
 	}

@@ -11,29 +11,44 @@ import (
 
 type Client struct {
 	host       string
-	repository string
-	token      string
+	readToken  string
+	writeToken string
 }
 
-const CHANNEL_STABLE = "stable"
-
-func NewClient(host, repository, token string) *Client {
+func NewClient(host, readToken string, writeToken string) *Client {
 	return &Client{
 		host:       host,
-		repository: repository,
-		token:      token,
+		readToken:  readToken,
+		writeToken: writeToken,
 	}
 }
 
-func (c *Client) LatestRelease(channel string) (*Release, error) {
-	if channel == "" {
-		channel = CHANNEL_STABLE
+type Release struct {
+	Versions map[string]*Version `json:"versions"`
+}
+
+func NewRelease() *Release {
+	return &Release{
+		Versions: make(map[string]*Version),
 	}
-	req, err := http.NewRequest("GET", c.cleanHost()+"/repos/"+c.repository+"/releases/"+channel+"/latest", nil)
+}
+
+type Version struct {
+	ContentType string `json:"contenttype"`
+	Size        int64  `json:"size"`
+	Filename    string `json:"filename"`
+}
+
+func NewVersion() *Version {
+	return &Version{}
+}
+
+func (c *Client) Release(release string) (*Release, error) {
+	req, err := http.NewRequest("GET", c.cleanHost()+"/releases/"+release, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("X-PUSHR-TOKEN", c.token)
+	req.Header.Set("X-PUSHR-TOKEN", c.readToken)
 	req.Header.Set("Accept", "application/json")
 	client := &http.Client{}
 	binresp, err := client.Do(req)
@@ -42,29 +57,49 @@ func (c *Client) LatestRelease(channel string) (*Release, error) {
 	}
 	defer binresp.Body.Close()
 	r := bufio.NewReader(binresp.Body)
-	var release Release
-	err = json.NewDecoder(r).Decode(&release)
+	var rel Release
+	err = json.NewDecoder(r).Decode(&rel)
 	if err != nil {
 		return nil, err
 	}
 
-	return &release, nil
+	return &rel, nil
 }
 
-func (c *Client) LatestStableRelease() (*Release, error) {
-	return c.LatestRelease("stable")
+func (c *Client) LatestVersion(release string) (*Version, error) {
+	//TODO: Implement
+	return nil, nil
 }
 
-func (c *Client) cleanHost() string {
-	return strings.TrimSuffix(c.host, "/")
+func (c *Client) Version(release string, versionstr string) (*Version, error) {
+	req, err := http.NewRequest("GET", c.cleanHost()+"/releases/"+release+"/"+versionstr, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("X-PUSHR-TOKEN", c.readToken)
+	req.Header.Set("Accept", "application/json")
+	client := &http.Client{}
+	binresp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer binresp.Body.Close()
+	r := bufio.NewReader(binresp.Body)
+	var version Version
+	err = json.NewDecoder(r).Decode(&version)
+	if err != nil {
+		return nil, err
+	}
+
+	return &version, nil
 }
 
-func (c *Client) Download(a *Asset, filename string) error {
-	req, err := http.NewRequest("GET", c.cleanHost()+"/repos/"+c.repository+"/assets/"+a.ID, nil)
+func (c *Client) Download(release string, versionstr string, filename string) error {
+	req, err := http.NewRequest("GET", c.cleanHost()+"/releases/"+release+"/"+versionstr, nil)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("X-PUSHR-TOKEN", c.token)
+	req.Header.Set("X-PUSHR-TOKEN", c.readToken)
 	req.Header.Set("Accept", "application/octet-stream")
 	client := &http.Client{}
 	binresp, err := client.Do(req)
@@ -105,14 +140,6 @@ func (c *Client) Download(a *Asset, filename string) error {
 	return nil
 }
 
-type Release struct {
-	Name    string   `json:"name"`
-	Version string   `json:"version"`
-	Assets  []*Asset `json:"assets"`
-}
-
-type Asset struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	ContentType string `json:"contentType"`
+func (c *Client) cleanHost() string {
+	return strings.TrimSuffix(c.host, "/")
 }

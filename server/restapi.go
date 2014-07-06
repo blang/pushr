@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"github.com/blang/methodr"
+	"github.com/blang/pushr"
 	"github.com/blang/semver"
 	"github.com/gorilla/mux"
 	"io"
@@ -143,7 +144,7 @@ func (a *RestAPI) handlePostRelease(w http.ResponseWriter, r *http.Request) {
 
 	release, found := a.ds.releases[name]
 	if !found {
-		release = NewRelease()
+		release = pushr.NewRelease()
 		a.ds.releases[name] = release
 	}
 
@@ -159,7 +160,7 @@ func (a *RestAPI) handlePostRelease(w http.ResponseWriter, r *http.Request) {
 	}
 	newFilename := name + "-" + versionStr + fileext
 
-	version = NewVersion()
+	version = pushr.NewVersion()
 	version.Filename = newFilename
 	version.ContentType = mime.TypeByExtension(fileext)
 	filePath := a.ds.Filepath(version)
