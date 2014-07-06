@@ -112,18 +112,27 @@ func TestLatestRelease(t *testing.T) {
 	}
 
 	//Get latest stable version
-	v, err = c.LatestVersion("test", "") //stable
+	v, versionStr, err := c.LatestVersion("test", "") //stable
 	if !reflect.DeepEqual(v, testRelease.Versions["1.0.0"]) {
 		t.Fatalf("Latest version on stable channel failed: expected %q, got %q", testRelease.Versions["1.0.0"], v)
 	}
+	if versionStr != "1.0.0" {
+		t.Fatalf("Latest version mismatch: expected %s, got %s", "1.0.0", versionStr)
+	}
 
-	v, err = c.LatestVersion("test", "stable") //stable
+	v, versionStr, err = c.LatestVersion("test", "stable") //stable
 	if !reflect.DeepEqual(v, testRelease.Versions["1.0.0"]) {
 		t.Fatalf("Latest version on stable channel failed: expected %q, got %q", testRelease.Versions["1.0.0"], v)
 	}
+	if versionStr != "1.0.0" {
+		t.Fatalf("Latest version mismatch: expected %s, got %s", "1.0.0", versionStr)
+	}
 
-	v, err = c.LatestVersion("test", "beta") //stable
+	v, versionStr, err = c.LatestVersion("test", "beta") //stable
 	if !reflect.DeepEqual(v, testRelease.Versions["1.0.1-beta"]) {
 		t.Fatalf("Latest version on stable channel failed: expected %q, got %q", testRelease.Versions["1.0.1-beta"], v)
+	}
+	if versionStr != "1.0.1-beta" {
+		t.Fatalf("Latest version mismatch: expected %s, got %s", "1.0.1-beta", versionStr)
 	}
 }

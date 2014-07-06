@@ -83,10 +83,10 @@ func (c *Client) Release(release string) (*Release, error) {
 	return &rel, nil
 }
 
-func (c *Client) LatestVersion(release string, channel string) (*Version, error) {
+func (c *Client) LatestVersion(release string, channel string) (*Version, string, error) {
 	r, err := c.Release(release)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if channel == "" {
 		channel = "stable"
@@ -106,17 +106,17 @@ func (c *Client) LatestVersion(release string, channel string) (*Version, error)
 		v := versions[i]
 		if channel == "stable" {
 			if len(v.Pre) == 0 {
-				return r.Versions[v.String()], nil
+				return r.Versions[v.String()], v.String(), nil
 			}
 		} else {
 			// Accept stable release if it's the latest version, otherwise search for specific channel
 			if len(v.Pre) == 0 || (len(v.Pre) > 0 && v.Pre[0].String() == channel) {
-				return r.Versions[v.String()], nil
+				return r.Versions[v.String()], v.String(), nil
 			}
 		}
 	}
 
-	return nil, errors.New("No version in this channel available")
+	return nil, "", errors.New("No version in this channel available")
 }
 
 func (c *Client) Version(release string, versionstr string) (*Version, error) {
