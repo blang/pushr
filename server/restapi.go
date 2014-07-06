@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 type RestAPI struct {
@@ -104,14 +103,9 @@ func (a *RestAPI) handleGetRelease(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(version)
 	} else {
 		filename := a.ds.Filepath(version)
-		f, err := os.OpenFile(filename, os.O_RDONLY, 0600)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		defer f.Close()
 		w.Header().Set("Content-Type", version.ContentType)
-		http.ServeContent(w, r, version.Filename, time.Now(), f)
+		w.Header().Set("Content-Disposition", "attachment; filename=\""+version.Filename+"\"")
+		http.ServeFile(w, r, filename)
 	}
 }
 
@@ -188,7 +182,7 @@ func (a *RestAPI) readAccess(handler http.Handler) http.Handler {
 		return handler
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-PUSHR-TOKEN") == a.readToken {
+		if r.Header.Get("X-PUSHR-TOKEN") == a.readToken || r.FormValue("token") == a.readToken {
 			handler.ServeHTTP(w, r)
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -202,7 +196,7 @@ func (a *RestAPI) writeAccess(handler http.Handler) http.Handler {
 		return handler
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-PUSHR-TOKEN") == a.writeToken {
+		if r.Header.Get("X-PUSHR-TOKEN") == a.writeToken || r.FormValue("token") == a.writeToken {
 			handler.ServeHTTP(w, r)
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
