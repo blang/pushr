@@ -34,7 +34,7 @@ func main() {
 		writeToken = flag.String("writetoken", "", "Write token")
 	)
 	flag.Parse()
-
+	log.Printf("Readtoken: %q, Writetoken: %q\n", *readToken, *writeToken)
 	ds, err := buildDataStore(*dataDir)
 	if err != nil {
 		log.Fatalf("Could not read data dir: %s", err)
