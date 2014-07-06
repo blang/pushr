@@ -15,10 +15,20 @@ import (
 func TestLatestRelease(t *testing.T) {
 	testRelease := Release{
 		Versions: map[string]*Version{
+			"1.0.1-beta": &Version{
+				ContentType: "application/zip",
+				Size:        10,
+				Filename:    "test-1.0.1-beta.zip",
+			},
 			"1.0.0": &Version{
 				ContentType: "application/zip",
 				Size:        10,
 				Filename:    "test-1.0.0.zip",
+			},
+			"0.1.0": &Version{
+				ContentType: "application/zip",
+				Size:        10,
+				Filename:    "test-0.1.0.zip",
 			},
 		},
 	}
@@ -75,7 +85,7 @@ func TestLatestRelease(t *testing.T) {
 		t.Fatal("No version found")
 	}
 	if !reflect.DeepEqual(v, testRelease.Versions["1.0.0"]) {
-		t.Fatalf("Release deep equal failed: expected %q, got %q", testRelease.Versions["1.0.0"], v)
+		t.Fatalf("Version deep equal failed: expected %q, got %q", testRelease.Versions["1.0.0"], v)
 	}
 
 	// Setup asset download
@@ -99,5 +109,21 @@ func TestLatestRelease(t *testing.T) {
 	}
 	if string(b) != "TESTOUTPUT" {
 		t.Errorf("Written asset file contains wrong data: %q", string(b))
+	}
+
+	//Get latest stable version
+	v, err = c.LatestVersion("test", "") //stable
+	if !reflect.DeepEqual(v, testRelease.Versions["1.0.0"]) {
+		t.Fatalf("Latest version on stable channel failed: expected %q, got %q", testRelease.Versions["1.0.0"], v)
+	}
+
+	v, err = c.LatestVersion("test", "stable") //stable
+	if !reflect.DeepEqual(v, testRelease.Versions["1.0.0"]) {
+		t.Fatalf("Latest version on stable channel failed: expected %q, got %q", testRelease.Versions["1.0.0"], v)
+	}
+
+	v, err = c.LatestVersion("test", "beta") //stable
+	if !reflect.DeepEqual(v, testRelease.Versions["1.0.1-beta"]) {
+		t.Fatalf("Latest version on stable channel failed: expected %q, got %q", testRelease.Versions["1.0.1-beta"], v)
 	}
 }

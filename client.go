@@ -3,9 +3,12 @@ package pushr
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
+	"github.com/blang/semver"
 	"io"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -39,6 +42,20 @@ type Version struct {
 	Filename    string `json:"filename"`
 }
 
+type ByVersion []*semver.Version
+
+func (a ByVersion) Len() int {
+	return len(a)
+}
+
+func (a ByVersion) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
+}
+
+func (a ByVersion) Less(i, j int) bool {
+	return a[i].LT(a[j])
+}
+
 func NewVersion() *Version {
 	return &Version{}
 }
@@ -66,9 +83,40 @@ func (c *Client) Release(release string) (*Release, error) {
 	return &rel, nil
 }
 
-func (c *Client) LatestVersion(release string) (*Version, error) {
-	//TODO: Implement
-	return nil, nil
+func (c *Client) LatestVersion(release string, channel string) (*Version, error) {
+	r, err := c.Release(release)
+	if err != nil {
+		return nil, err
+	}
+	if channel == "" {
+		channel = "stable"
+	}
+
+	versions := make([]*semver.Version, 0, len(r.Versions))
+	for versionStr := range r.Versions {
+		v, err := semver.New(versionStr)
+		if err == nil {
+			versions = append(versions, v)
+		}
+	}
+
+	sort.Sort(ByVersion(versions))
+
+	for i := len(versions) - 1; i >= 0; i-- {
+		v := versions[i]
+		if channel == "stable" {
+			if len(v.Pre) == 0 {
+				return r.Versions[v.String()], nil
+			}
+		} else {
+			// Accept stable release if it's the latest version, otherwise search for specific channel
+			if len(v.Pre) == 0 || (len(v.Pre) > 0 && v.Pre[0].String() == channel) {
+				return r.Versions[v.String()], nil
+			}
+		}
+	}
+
+	return nil, errors.New("No version in this channel available")
 }
 
 func (c *Client) Version(release string, versionstr string) (*Version, error) {
