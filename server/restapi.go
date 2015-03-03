@@ -48,9 +48,15 @@ func (a *RestAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *RestAPI) registerEndpoints() {
+	a.router.Handle("/ping", http.HandlerFunc(a.handlePing))
 	a.router.Handle("/releases/{name}", methodr.GET(a.readAccess(http.HandlerFunc(a.handleReleaseList))))
 	a.router.Handle("/releases/{name}/{version}", methodr.GET(a.readAccess(http.HandlerFunc(a.handleGetRelease))))
 	a.router.Handle("/releases/{name}/{version}/{filename}", methodr.POST(a.writeAccess(http.HandlerFunc(a.handlePostRelease))))
+}
+
+func (a *RestAPI) handlePing(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
 
 func (a *RestAPI) handleReleaseList(w http.ResponseWriter, r *http.Request) {
