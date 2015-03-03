@@ -42,7 +42,7 @@ type Version struct {
 	Filename    string `json:"filename"`
 }
 
-type ByVersion []*semver.Version
+type ByVersion []semver.Version
 
 func (a ByVersion) Len() int {
 	return len(a)
@@ -92,7 +92,7 @@ func (c *Client) LatestVersion(release string, channel string) (*Version, string
 		channel = "stable"
 	}
 
-	versions := make([]*semver.Version, 0, len(r.Versions))
+	versions := make([]semver.Version, 0, len(r.Versions))
 	for versionStr := range r.Versions {
 		v, err := semver.New(versionStr)
 		if err == nil {
