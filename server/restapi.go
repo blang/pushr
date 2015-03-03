@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/blang/methodr"
 	"github.com/blang/pushr"
 	"github.com/blang/semver"
@@ -124,6 +125,7 @@ func (a *RestAPI) handlePostRelease(w http.ResponseWriter, r *http.Request) {
 	_, err := semver.New(versionStr)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Error processing version: %s", err)
 		return
 	}
 
@@ -145,11 +147,13 @@ func (a *RestAPI) handlePostRelease(w http.ResponseWriter, r *http.Request) {
 	version, found := release.Versions[versionStr]
 	if found {
 		w.WriteHeader(http.StatusConflict)
+		fmt.Fprintf(w, "Error: Version already found: %s", version)
 		return
 	}
 	fileext := filepath.Ext(filename)
 	if fileext == "" {
 		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Error: No File extension on %q found", filename)
 		return
 	}
 	newFilename := name + "-" + versionStr + fileext
@@ -162,6 +166,7 @@ func (a *RestAPI) handlePostRelease(w http.ResponseWriter, r *http.Request) {
 	o, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error: %s", err)
 		return
 	}
 	defer o.Close()
@@ -169,6 +174,8 @@ func (a *RestAPI) handlePostRelease(w http.ResponseWriter, r *http.Request) {
 	written, err := io.Copy(o, r.Body)
 	if err != nil || written == 0 {
 		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Error: Written %d, %s", written, err)
+		os.Remove(o.Name())
 		return
 	}
 	version.Size = written
